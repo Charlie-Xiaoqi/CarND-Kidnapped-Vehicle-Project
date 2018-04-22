@@ -118,10 +118,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		const std::vector<LandmarkObs> &observations, const Map &map_landmarks) {
 
     // Gather std values for readability
-    double stdx = std_landmark[0];
-    double stdy = std_landmark[1];
-
-    // Iterate over all particles
+        // Iterate over all particles
     for (int i = 0; i < num_particles; ++i) {
 		   
 
@@ -176,8 +173,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 					if (obs.id == land.id){
 						mu_x = land.x;
 						mu_y = land.y;
-						double norm_factor = 2*M_PI*stdx*stdy;
-						double prob = exp( - (pow(obs.x-mu_x,2)/(2*stdx*stdx) + pow(obs.y-mu_y,2)/(2*stdy*stdy)) ) ;								  
+						double norm_factor = 2*M_PI*std_landmark[0]*std_landmark[1];
+						double prob = exp( - (pow(obs.x-mu_x,2)/(2*std_landmark[0]*std_landmark[0]) + pow(obs.y-mu_y,2)/(2*std_landmark[1]*std_landmark[1])) ) ;								  
 						likelyhood *= prob/norm_factor;	
 					}
 															  
