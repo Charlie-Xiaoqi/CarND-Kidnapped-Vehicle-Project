@@ -104,8 +104,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			int land_id = map_landmark.id_i;
 			double land_x =(double) map_landmark.x_f;
 			double land_y =(double) map_landmark.y_f;
-			//double distance = sqrt((particles[i].x-land_x)*(particles[i].x-land_x) +(particles[i].y-land_y)*(particles[i].y-land_y) );
-            double distance = dist(particles[i].x,particles[i].y,land_x,land_y);													
+			double distance = sqrt((particles[i].x-land_x)*(particles[i].x-land_x) +(particles[i].y-land_y)*(particles[i].y-land_y) );
+            //double distance = dist(particles[i].x,particles[i].y,land_x,land_y);													
 			if (distance<sensor_range){
 				LandmarkObs MarksInrange;
 				MarksInrange.id = land_id;
@@ -122,9 +122,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
             // Convert observation from particle(vehicle) to map coordinate system
             LandmarkObs rotate;
-            rotate.x = cos(particles[i].theta) * observations[j].x - sin(particles[i].theta) * observations[j].y + particles[i].x;
-            rotate.y = sin(particles[i].theta) * observations[j].x + cos(particles[i].theta) * observations[j].y + particles[i].y;
-
+            rotate.x = particles[i].x + cos(particles[i].theta) * observations[j].x - sin(particles[i].theta) * observations[j].y ;
+            rotate.y = particles[i].y + sin(particles[i].theta) * observations[j].x + cos(particles[i].theta) * observations[j].y;
             Observed.push_back(rotate);
         }
 
