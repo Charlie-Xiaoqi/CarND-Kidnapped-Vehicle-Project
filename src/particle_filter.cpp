@@ -63,33 +63,24 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
     default_random_engine gen;
 
-	// TODO: Set standard deviations for x, y, and theta
-    double std_x = std_pos[0];
-	double std_y = std_pos[1];
-	double std_theta = std_pos[2];
-
 	for (int i = 0; i < num_particles; ++i) {
-		
-		double x_pre = particles[i].x ;
-		double y_pre = particles[i].y ;
-		double theta_pre = particles[i].theta ;
 		
 		double xpost, ypost,thetapost ;
 		
 		if (abs(yaw_rate)>1e-8){
-			xpost = x_pre + velocity/yaw_rate * (sin(theta_pre + yaw_rate*delta_t) - sin(theta_pre));
-			ypost = y_pre + velocity/yaw_rate * (cos(theta_pre) - cos(theta_pre + yaw_rate*delta_t));
+			xpost = particles[i].x + velocity/yaw_rate * (sin(particles[i].theta + yaw_rate*delta_t) - sin(particles[i].theta));
+			ypost = particles[i].y + velocity/yaw_rate * (cos(particles[i].theta) - cos(particles[i].theta + yaw_rate*delta_t));
 			thetapost = particles[i].theta + yaw_rate*delta_t;
 		}else{
-			thetapost = theta_pre;
-			xpost = x_pre + velocity*delta_t*cos(theta_pre);
-			ypost = y_pre + velocity*delta_t*sin(theta_pre);
+			thetapost = particles[i].theta;
+			xpost = particles[i].x + velocity*delta_t*cos(particles[i].theta);
+			ypost = particles[i].y + velocity*delta_t*sin(particles[i].theta);
 		}
 		 
 
-         normal_distribution<double> dist_x2(xpost, std_x);
-         normal_distribution<double> dist_y2(ypost, std_y);
-         normal_distribution<double> dist_theta2(thetapost, std_theta);
+         normal_distribution<double> dist_x2(xpost, std_pos[0]);
+         normal_distribution<double> dist_y2(ypost, std_pos[1]);
+         normal_distribution<double> dist_theta2(thetapost, std_pos[2]);
          particles[i].x = dist_x2(gen);
 		 particles[i].y = dist_y2(gen);
 		 particles[i].theta = dist_theta2(gen);
@@ -97,21 +88,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 }
 
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
-	// TODO: Find the predicted measurement that is closest to each observed measurement and assign the
-	//   observed measurement to this particular landmark.
-	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to
-	//   implement this method and use it as a helper during the updateWeights phase.
-	for (auto& obs: observations) {
-		 double min_distance = numeric_limits<double>::max();
-		 
-		 for (auto& pred: predicted){
-			double distance = sqrt((obs.x-pred.x)*(obs.x-pred.x) +(obs.y-pred.y)*(obs.y-pred.y) );
-			if (distance < min_distance){
-				obs.id = pred.id ;
-				min_distance = distance;
-			}
-		 }
-	}
+
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
@@ -119,14 +96,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
     // Gather std values for readability
         // Iterate over all particles
-    for (int i = 0; i < num_particles; ++i) {
-		   
-
-        // Gather current particle values
-        double px	   = particles[i].x;
-        double py	   = particles[i].y;
-        double ptheta = particles[i].theta;
-
+    for (int i = 0; i < num_particles; ++i) {   
         // List all landmarks within sensor range
         vector<LandmarkObs> predicted;
 
@@ -134,8 +104,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			int land_id = map_landmark.id_i;
 			double land_x =(double) map_landmark.x_f;
 			double land_y =(double) map_landmark.y_f;
-			//double distance = sqrt((px-land_x)*(px-land_x) +(py-land_y)*(py-land_y) );
-            double distance = dist(px,py,land_x,land_y);													
+			//double distance = sqrt((particles[i].x-land_x)*(particles[i].x-land_x) +(particles[i].y-land_y)*(particles[i].y-land_y) );
+            double distance = dist(particles[i].x,particles[i].y,land_x,land_y);													
 			if (distance<sensor_range){
 				LandmarkObs MarksInrange;
 				MarksInrange.id = land_id;
@@ -152,15 +122,28 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
             // Convert observation from particle(vehicle) to map coordinate system
             LandmarkObs rotate;
-            rotate.x = cos(ptheta) * observations[j].x - sin(ptheta) * observations[j].y + px;
-            rotate.y = sin(ptheta) * observations[j].x + cos(ptheta) * observations[j].y + py;
+            rotate.x = cos(particles[i].theta) * observations[j].x - sin(particles[i].theta) * observations[j].y + particles[i].x;
+            rotate.y = sin(particles[i].theta) * observations[j].x + cos(particles[i].theta) * observations[j].y + particles[i].y;
 
             Observed.push_back(rotate);
         }
 
         // Find which observations correspond to which landmarks (associate ids)
-        dataAssociation(predicted, Observed);
+        //dataAssociation(predicted, Observed);
 
+		
+		for (auto& obs: Observed) {
+			double min_distance = 1e16;
+			//cout << min_distance;
+			//cout << "\n";
+			for (auto& pred: predicted){
+				double distance = sqrt((obs.x-pred.x)*(obs.x-pred.x) +(obs.y-pred.y)*(obs.y-pred.y) );
+				if (distance < min_distance){
+					obs.id = pred.id ;
+					min_distance = distance;
+				}
+			}
+		}
         // Compute the likelihood for each particle, that is the probablity of obtaining
         // current observations being in state (particle_x, particle_y, particle_theta)
 			double likelyhood = 1;
@@ -185,13 +168,15 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 							   
 		}
 			
-    double norm_factor = 0;
-    for (const auto& particle : particles)
-        norm_factor += particle.weight;
-
+    double norm_fact = 0;
+    for (const auto& part : particles){
+        norm_fact += part.weight;
+	}
     // Normalize weights s.t. they sum to one
-    for (auto& particle : particles)
-        particle.weight /= (norm_factor + numeric_limits<double>::epsilon());
+    for (auto& part : particles){
+        //part.weight /= (norm_fact + numeric_limits<double>::epsilon());
+		part.weight /= norm_fact;
+	}
    
   
   
